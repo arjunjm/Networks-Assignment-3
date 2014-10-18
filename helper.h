@@ -2,9 +2,13 @@
 #define __HELPER_H__
 
 #include <sys/types.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <list>
+#include <stdlib.h>
 #include <iostream>
+#include <fstream>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -69,32 +73,42 @@ void sigchld_handler(int s)
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
-/*
-char query[] =
-"GET / HTTP/1.0\r\n"
-"Host: www.google.com\r\n"
-"\r\n";
-*/
-
 const char *createHTMLRequest(char *clientRequest)
 {
     string cliReq(clientRequest);
     std::size_t pos1 = cliReq.find("www");
-    std::size_t pos2 = cliReq.find("com");
 
-    if (pos1 == std::string::npos || pos2 == std::string::npos)
-        return NULL;
-    
-    string hostName = cliReq.substr(pos1, pos2 + 3);
-    string fileRequest = "/";
+    bool slashesFound = false;
+    if (pos1 == std::string::npos)
+    {
+        pos1 = cliReq.find("//");
+        if (pos1 != std::string::npos)
+            slashesFound = true;
+        else
+            pos1 = 0;
+    }
 
-    std::size_t pos3 = cliReq.find(".com");
+    string subReq;
+    if (!slashesFound)
+    {
+        subReq = cliReq.substr(pos1);
+    }
+    else
+    {
+        subReq = cliReq.substr(pos1 + 2);
+    }
+    std::size_t pos2 = subReq.find("/");
+    string hostName = subReq.substr(0, pos2);
+    string fileRequest;
 
-    if (pos3 + 4 != std::string::npos)
-        fileRequest = cliReq.substr(pos3 + 4);
-
-    if (fileRequest == "")
+    if(pos2 == std::string::npos)
+    {
         fileRequest = "/";
+    }
+    else
+    {
+        fileRequest = subReq.substr(pos2);
+    }
 
     string HTMLRequest = "GET " + fileRequest + " HTTP/1.0\r\n"
         "Host: " + hostName + "\r\n"
@@ -103,26 +117,18 @@ const char *createHTMLRequest(char *clientRequest)
     return HTMLRequest.c_str();
 }
 
-char *getHostIP(const char *hostName)
+string getFileName(string HTTPMessage)
 {
-    struct hostent *he;
-    char *IP = new char[16];
-    memset(IP, 0, 16);
-
-    cout << hostName << endl;
-
-    if ((he = gethostbyname(hostName)) == NULL) 
-    {  // get the host info
-        herror("gethostbyname");
-        return NULL;
-    }
-
-    if(inet_ntop(AF_INET, (void *)he->h_addr_list[0], IP, 16) == NULL)
+    std::size_t pos = HTTPMessage.find("GET"); 
+    const char *subReq = HTTPMessage.substr(pos + 4).c_str();
+    
+    int i = 0;
+    while(subReq[i] != ' ')
     {
-        perror("Can't resolve host");
-        exit(1);
+        i++;
     }
-    return IP;
+    string fileName = string(subReq).substr(0, i);
+    return fileName;
 }
 
 // get sockaddr, IPv4 or IPv6:
@@ -135,6 +141,32 @@ void *get_in_addr(struct sockaddr *sa)
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
 }
 
+char *getHostIP(const char *hostName)
+{
+    struct hostent *he;
+    char *IP = new char[16];
+    memset(IP, 0, 16);
+    struct addrinfo hints;
+    struct addrinfo *serverInfo;
+
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    char port[10];
+    sprintf(port, "%d", HTTP_PORT);
+
+    int rVal = getaddrinfo(hostName, port, &hints, &serverInfo);
+    if (rVal != 0)
+    {
+        //Non-zero return value indicates an error
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rVal));
+        return NULL;
+    }
+    inet_ntop(serverInfo->ai_family, get_in_addr((struct sockaddr*)serverInfo->ai_addr), IP, 16);
+
+    return IP;
+}
 SBMPHeaderT* createMessagePacket(SBMPMessageTypeT msgType, const char *userName, const char *msg)
 {
     SBMPAttributeT sbmpAttr;

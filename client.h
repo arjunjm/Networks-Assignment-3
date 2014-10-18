@@ -22,13 +22,15 @@ class Client
         char userName[15];
         char hostName[15];
         char serverPort[15];
+        char URLToRetrieve[512];
         struct addrinfo hints;
         bool isConnected;
 
 
     public:
-        Client(char *userName, char *hostName, char *serverPort);
+        Client(char *hostName, char *serverPort, char *URL);
         int connectToHost();
+        char* getURL();
         int sendData(void * buf, size_t len, int flags = 0);
         int recvData();
         bool getConnectionStatus();

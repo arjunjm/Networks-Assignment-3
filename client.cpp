@@ -2,12 +2,13 @@
 #include <iostream>
 using namespace std;
 
-Client::Client(char *usrName, char *hName, char *servPort)
+Client::Client(char *hName, char *servPort, char *URL)
 {
     isConnected = false;
-    strcpy(this->userName, usrName);
+    //strcpy(this->userName, usrName);
     strcpy(this->hostName, hName);
     strcpy(this->serverPort, servPort);
+    strcpy(this->URLToRetrieve, URL);
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -171,11 +172,17 @@ char * Client::getUserName()
     return userName;
 }
 
+char * Client::getURL()
+{
+    return URLToRetrieve;
+}
+
+
 int main(int argc, char *argv[])
 {
     if (argc != 4)
     {
-        fprintf(stderr, "Usage: client <username> <server IP> <server PORT>\n");
+        fprintf(stderr, "Usage: client <proxy IP> <proxy PORT> <URL to retrieve>\n");
         exit(1);
     }
     Client *c = new Client(argv[1], argv[2], argv[3]);
@@ -187,86 +194,19 @@ int main(int argc, char *argv[])
         exit(1);
     }
     char query[1024];
-    /*
-        char query[] =
-            "GET / HTTP/1.0\r\n"
-            "Host: www.google.com\r\n"
-            "\r\n";
-
-    */
     if (c->getConnectionStatus())
     {
         /*
-         * Send JOIN message to the server
+         * Send HTTP request message to the proxy server
          */
         cout << "Connection successful..\n";
-        /*
-        char query[] =
-            "GET / HTTP/1.0\r\n"
-            "Host: www.google.com\r\n"
-            "\r\n";
+        int clientFd = c->getSocketFd();
+        bool hasPrinted;
+        strcpy(query, createHTMLRequest(c->getURL()));
 
         c->sendData(query, strlen(query)+1);
-        */
-        //SBMPHeaderT * sbmpHeader = createMessagePacket(JOIN, c->getUserName(), NULL);
-        //c->sendData(sbmpHeader, sizeof(SBMPHeader));
-        //c->recvData();
-    }
 
-    int clientFd = c->getSocketFd();
-    fd_set read_fds;
-    int fdMax;
-    fdMax = clientFd;
-    char message[512];
 
-    cout << "Your request: ";
-    fflush(stdout);
-
-    bool hasPrinted;
-
-    while(1)
-    {
-        hasPrinted = false;
-        FD_ZERO(&read_fds);
-        FD_SET(c->getSocketFd(), &read_fds);
-        FD_SET(STDIN_FILENO, &read_fds);
-        if (select (fdMax + 1, &read_fds, NULL, NULL, NULL) == -1)
-        {
-            perror("Select");
-            exit(4);
-        }
-
-        if (FD_ISSET(STDIN_FILENO, &read_fds))
-        {
-            /*
-             * Read input from user
-             */
-            if (!hasPrinted)
-            {
-                cout << "Your request: ";
-                hasPrinted = true;
-            }
-            cin.getline(message, 512);
-            strcpy(query, createHTMLRequest(message));
-
-            c->sendData(query, strlen(query)+1);
-            fflush(STDIN_FILENO);
-        }
-
-        if (FD_ISSET(clientFd, &read_fds))
-        {
-            /*
-             * Get message from proxy server
-             */
-            c->recvData();
-            if (!hasPrinted)
-            {
-                cout << "Your request: ";
-                hasPrinted = true;
-            }
-            fflush(stdout);
-            fflush(STDIN_FILENO);
-        }
     }
 
     return 0;

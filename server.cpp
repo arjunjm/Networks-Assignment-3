@@ -6,14 +6,14 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include<fcntl.h>
 
 using namespace std;
 
-Server::Server(char *servIP, char *portNum, int maxConns)
+Server::Server(char *servIP, char *portNum)
 {
     strcpy(this->serverIP, servIP);
     strcpy(this->portNum, portNum);
-    this->maxConnections = maxConns;
 
     memset(&this->hints, 0, sizeof hints);
     this->hints.ai_family = AF_UNSPEC;
@@ -84,14 +84,6 @@ int Server::listenForConnections()
     }
     return 0;
 }
-
-int Server::sendData(int sockFD, void * buf, size_t len, int flags)
-{
-    int retVal;
-    retVal = send(sockFD, buf, len, flags);
-    return retVal;
-}
-
 /*
 void printMap(std::map<int, string> myMap)
 {
@@ -102,86 +94,7 @@ void printMap(std::map<int, string> myMap)
     }
 }
 */
-int Server::recvData(int sockFD, SBMPMessageType &msgType, char *message)
-{
-    int numBytes;
-    SBMPHeaderT *recvHeader = new SBMPHeaderT();
-    numBytes = recv(sockFD, recvHeader, sizeof(SBMPHeaderT)-1, 0);
-    if (numBytes == -1)
-    {
-        perror("Error in receiving data from the client");
-        exit(1);
-    }
 
-    msgType = (SBMPMessageTypeT) recvHeader->type;
-
-    switch(msgType) 
-    {
-        case JOIN:
-            {
-                if (userStatusMap.size() >= maxConnections)
-                {
-                    std::string connFailReason("Maximum number of connections reached");
-                    cout << connFailReason << endl;
-                    SBMPHeaderT *sbmpHeader = createMessagePacket(NACK, NULL, connFailReason.c_str());
-                    if (sendData(sockFD, sbmpHeader, sizeof(SBMPHeaderT), 0) == -1)
-                    {
-                        perror("Error while sending NACK");
-                    }
-                    return 0;
-                }
-
-                string userName(recvHeader->attributes[0].payload.username);
-                if (userStatusMap.find(userName) == userStatusMap.end())
-                {
-                    cout << userName << " has joined the chat session" << endl;
-                    userStatusMap[userName] = ONLINE;
-                    fdUserMap[sockFD] = userName;
-                }
-                else
-                {
-                    std::string connFailReason("Username already in use");
-                    cout <<  "The user has already connected\n";
-                    SBMPHeaderT *sbmpHeader = createMessagePacket(NACK, NULL, connFailReason.c_str());
-                    if (sendData(sockFD, sbmpHeader, sizeof(SBMPHeaderT), 0) == -1)
-                    {
-                        perror("Error while sending NACK");
-                    }
-                    return 0;
-                }
-
-                /*
-                 * Send ACK with currently online user information
-                 */
-                std::string userInfo = getUserInfo();
-                SBMPHeaderT *sbmpHeader = createMessagePacket(ACK, NULL, userInfo.c_str());
-                if (sendData(sockFD, sbmpHeader, sizeof(SBMPHeaderT), 0) == -1)
-                {
-                    perror("Error while sending ACK");
-                }
-            }
-            break;
-
-        case FWD:
-            break;
-
-        case SEND:
-            {
-                strcpy(message, recvHeader->attributes[0].payload.message);
-                cout << "Received message from " << fdUserMap[sockFD] << ": [" << message << "]. Forwarding message to other clients" << endl;
-            }
-            break;
-
-        case ACK:
-        case NACK:
-        case ONLINE_INFO:
-        case OFFLINE_INFO:
-            break;
-
-    }
-    
-    return numBytes;
-}
 
 int Server::acceptConnection()
 {
@@ -280,13 +193,16 @@ int Server::acceptConnection()
                        /*
                         * Client is sending actual data.
                         */
-                       cout << message << endl; 
                        string msg(message);
+                       cout << message << endl; 
+                       string fileName = getFileName(msg);
                        std::size_t pos1 = msg.find("Host");
                        std::size_t pos2 = msg.find("com");
                        string hostName = msg.substr(pos1 + 6, pos2 - pos1 - 3);
 
                        char *hostIP = getHostIP(hostName.c_str());
+                       if (hostIP == NULL)
+                           continue;
 
                        /*
                         * Fill struct for sending to remote server
@@ -331,11 +247,19 @@ int Server::acceptConnection()
                        char incomingBuf[512];
                        std::ofstream fileOut(hostName.c_str(), ios::out);
                        int numBytes = 0;
+                       int retries = 0;
+                       //fcntl(httpSock, F_SETFL, O_NONBLOCK);
+
                        do
                        {
                            numBytes = recv(httpSock, incomingBuf, 511, 0);
+                           if (numBytes == 0)
+                               retries++;
+                           else
+                               retries = 0;
+                           //cout << incomingBuf;
                            fileOut << incomingBuf;
-                       }while (numBytes > 0);
+                       }while (retries < 100);
                        fileOut.close();
 
                        delete [] message;
@@ -371,17 +295,17 @@ std::string Server::getUserInfo()
 
 int main(int argc, char *argv[])
 {
-    if (argc != 4)
+    if (argc != 3)
     {
-       fprintf(stderr, "Usage: server <server IP> <server PORT> <max clients>\n");
+       fprintf(stderr, "Usage: server <IP to bind> <PORT to bind>\n");
        exit(1);
     }
 
-    Server *s = new Server(argv[1], argv[2], atoi(argv[3]));
+    Server *s = new Server(argv[1], argv[2]);
     s->createSocketAndBind();
     s->listenForConnections();
 
-    printf("Chat server is waiting for incoming connections...\n");
+    printf("Proxy server is waiting for incoming connections...\n");
     s->acceptConnection();
     return 0;
 }

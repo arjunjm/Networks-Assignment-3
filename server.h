@@ -35,13 +35,10 @@ class Server
         std::map<string, UserStatusT> userStatusMap;
 
     public:
-        Server(char *serverIP, char *portNum, int maxConns);
+        Server(char *serverIP, char *portNum);
         int createSocketAndBind();
         int listenForConnections();
         int acceptConnection();
-        int sendData(int sockFd, void * buf, size_t len, int flags = 0);
-        int recvData(int sockFd, SBMPMessageType&, char *);
-
         /*
          * This function returns the client count and the 
          * users connected in the form of a string
