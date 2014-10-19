@@ -160,8 +160,9 @@ int Server::acceptConnection()
                     * Receive data from a server socket
                     */
                    char incomingBuf[512];
+                   memset(incomingBuf, 0, 512);
                    int readBytes = recv(i, incomingBuf, 512, 0);
-                   std::fstream fileOut(sockFileMap[i].c_str(), std::fstream::out | std::fstream::app);
+                   std::fstream fileOut(sockFileMap[i].c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
                    if (readBytes == 0)
                    {
                        /*
@@ -170,13 +171,15 @@ int Server::acceptConnection()
                         */
                        serverSockets.erase(i);
                        FD_CLR(i, &master);
+                       deleteHeaderFromFile(sockFileMap[i]);
                        fileOut.close();
                        sockFileMap.erase(i);
                        close(i);
                    }
                    else
                    {
-                       fileOut << incomingBuf;
+                       //fileOut << incomingBuf;
+                       fileOut.write(incomingBuf, readBytes);
                        fileOut.close();
                    }
 
@@ -301,24 +304,7 @@ int Server::acceptConnection()
                        char incomingBuf[512];
                        std::fstream fileOut(fName.c_str(), ios::out);
                        sockFileMap[httpSock] = fName;
-                       int numBytes = 0;
-                       int retries = 0;
-
-                       /*
-                       do
-                       {
-                           numBytes = recv(httpSock, incomingBuf, 511, 0);
-                           if (numBytes == 0)
-                               retries++;
-                           else
-                               retries = 0;
-                           //cout << incomingBuf;
-                           fileOut << incomingBuf;
-                       }while (retries < 100);
-                       fileOut.close();
-                       */
-                       //delete [] message;
-                        
+                       sockReadyForActualData[httpSock] = false;
                    }
                }
            }

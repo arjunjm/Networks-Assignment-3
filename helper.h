@@ -4,9 +4,11 @@
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/wait.h>
+#include <stdio.h>
 #include <list>
 #include <stdlib.h>
 #include <iostream>
+#include <string.h>
 #include <fstream>
 #include <fcntl.h>
 
@@ -71,6 +73,47 @@ typedef struct SBMPHeader
 void sigchld_handler(int s)
 {
     while(waitpid(-1, NULL, WNOHANG) > 0);
+}
+
+void deleteHeaderFromFile(string fileName)
+{
+    string tempFileName = fileName + "temp_file";
+    std::fstream tempFile(tempFileName.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
+    std::fstream inFile(fileName.c_str());
+    std::string line;
+    /*
+     * Ignore lines till the line "Alternate Protocol"
+     */
+    bool ignoreLines = true;
+    bool firstLine = false;
+    while (std::getline(inFile, line))
+    {
+        if (ignoreLines)
+        {
+            if (line == "\r")
+            {
+                firstLine = true;
+                ignoreLines = false;
+                continue;
+            }
+
+        }
+        else
+        {
+            if (firstLine)
+            {
+                firstLine = false;
+            }
+            else
+            {
+                tempFile << endl;
+            }
+            tempFile << line;
+        }
+    }
+    inFile.close();
+    std::remove(fileName.c_str());
+    std::rename(tempFileName.c_str(), fileName.c_str());
 }
 
 const char *createHTMLRequest(char *clientRequest)

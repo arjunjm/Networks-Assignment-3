@@ -35,6 +35,7 @@ class Server
         int maxConnections;
         std::set<int> serverSockets;
         std::map<int, string> sockFileMap;
+        std::map<int, bool> sockReadyForActualData;
         std::map<int, string> fdUserMap;
         std::map<string, UserStatusT> userStatusMap;
 
