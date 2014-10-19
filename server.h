@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fstream>
 #include <errno.h>
 #include <string.h>
 #include <sys/types.h>
@@ -14,6 +15,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <map>
+#include <set>
 #include "helper.h"
 #include <string>
 
@@ -31,6 +33,8 @@ class Server
         char serverIP[20];
         char portNum[10];
         int maxConnections;
+        std::set<int> serverSockets;
+        std::map<int, string> sockFileMap;
         std::map<int, string> fdUserMap;
         std::map<string, UserStatusT> userStatusMap;
 

@@ -143,7 +143,6 @@ void *get_in_addr(struct sockaddr *sa)
 
 char *getHostIP(const char *hostName)
 {
-    struct hostent *he;
     char *IP = new char[16];
     memset(IP, 0, 16);
     struct addrinfo hints;
@@ -167,6 +166,19 @@ char *getHostIP(const char *hostName)
 
     return IP;
 }
+
+string formatName(string name)
+{
+   for (std::size_t i = name.length() - 1; i > 0; i--)
+   {
+       if (!isalnum(name[i]) && name[i] != '.')
+       {
+           name.erase(i, 1);
+       }
+   }
+   return name;
+}
+
 SBMPHeaderT* createMessagePacket(SBMPMessageTypeT msgType, const char *userName, const char *msg)
 {
     SBMPAttributeT sbmpAttr;

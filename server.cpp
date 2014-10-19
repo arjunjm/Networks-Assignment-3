@@ -154,6 +154,33 @@ int Server::acceptConnection()
                    }
 
                }
+               else if (serverSockets.find(i) != serverSockets.end())
+               {
+                   /* 
+                    * Receive data from a server socket
+                    */
+                   char incomingBuf[512];
+                   int readBytes = recv(i, incomingBuf, 512, 0);
+                   std::fstream fileOut(sockFileMap[i].c_str(), std::fstream::out | std::fstream::app);
+                   if (readBytes == 0)
+                   {
+                       /*
+                        * Server has finished sending data. Terminate.
+                        * Also, add code to send data to client here.
+                        */
+                       serverSockets.erase(i);
+                       FD_CLR(i, &master);
+                       fileOut.close();
+                       sockFileMap.erase(i);
+                       close(i);
+                   }
+                   else
+                   {
+                       fileOut << incomingBuf;
+                       fileOut.close();
+                   }
+
+               }
                else
                {
                    /*
@@ -196,10 +223,31 @@ int Server::acceptConnection()
                        string msg(message);
                        cout << message << endl; 
                        string fileName = getFileName(msg);
+                       char str[100];
+                       if (fileName == "/")
+                           fileName = "-index.html";
+                       else
+                       {
+                           std::size_t len = fileName.copy(str, fileName.length());
+                           str[len] = '\0';
+
+                           /*
+                            * Replace / by -
+                            */
+                           for (int i = 0; i < len; i++)
+                           {
+                               if (str[i] == '/')
+                                   str[i] = '-';
+                           }
+                           fileName = string(str);
+                       }
+
                        std::size_t pos1 = msg.find("Host");
                        std::size_t pos2 = msg.find("com");
                        string hostName = msg.substr(pos1 + 6, pos2 - pos1 - 3);
+                       hostName = formatName(hostName);
 
+                       string fName = hostName + fileName;
                        char *hostIP = getHostIP(hostName.c_str());
                        if (hostIP == NULL)
                            continue;
@@ -234,6 +282,12 @@ int Server::acceptConnection()
                            continue;
                        }
 
+                       serverSockets.insert(httpSock);
+                       FD_SET(httpSock, &master);
+                       if (httpSock > fdMax)
+                       {
+                           fdMax = httpSock;
+                       }
                        /*
                         * Send HTTP request
                         */
@@ -245,11 +299,12 @@ int Server::acceptConnection()
                        }
 
                        char incomingBuf[512];
-                       std::ofstream fileOut(hostName.c_str(), ios::out);
+                       std::fstream fileOut(fName.c_str(), ios::out);
+                       sockFileMap[httpSock] = fName;
                        int numBytes = 0;
                        int retries = 0;
-                       //fcntl(httpSock, F_SETFL, O_NONBLOCK);
 
+                       /*
                        do
                        {
                            numBytes = recv(httpSock, incomingBuf, 511, 0);
@@ -261,8 +316,8 @@ int Server::acceptConnection()
                            fileOut << incomingBuf;
                        }while (retries < 100);
                        fileOut.close();
-
-                       delete [] message;
+                       */
+                       //delete [] message;
                         
                    }
                }

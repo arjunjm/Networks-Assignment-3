@@ -26,7 +26,6 @@ class Client
         struct addrinfo hints;
         bool isConnected;
 
-
     public:
         Client(char *hostName, char *serverPort, char *URL);
         int connectToHost();
