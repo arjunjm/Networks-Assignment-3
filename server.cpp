@@ -150,7 +150,6 @@ int Server::acceptConnection()
                        }
                        inet_ntop(clientAddr.ss_family, get_in_addr((struct sockaddr *)&clientAddr), ipAddr, sizeof ipAddr);
 
-
                    }
 
                }
@@ -173,14 +172,41 @@ int Server::acceptConnection()
                        FD_CLR(i, &master);
                        deleteHeaderFromFile(sockFileMap[i]);
                        fileOut.close();
+
+                       /*
+                        * Send file size to the client
+                        */
+                       int cliSocket = servSockCliSockMap[i];
+                       int fileSize = getFileSize(sockFileMap[i].c_str());
+                       cout <<"File size = " << fileSize << endl;
+                       send(cliSocket, &fileSize, sizeof (fileSize), 0);
+
+                       /* 
+                        * Send file to the client
+                        */
+                       char buffer[512];
+                       memset(buffer, 0, 512);
+                       std::fstream fileIn(sockFileMap[i].c_str());
+                       int bytesSend = 0;
+                       if (fileIn.is_open())
+                       {
+                           while (fileIn.good())
+                           {
+                               fileIn.read(buffer, 512);
+                               bytesSend += fileIn.gcount();
+                               send(cliSocket, buffer, fileIn.gcount(), 0);
+                           }
+                       }
+
                        sockFileMap.erase(i);
                        close(i);
+
                    }
                    else
                    {
-                       //fileOut << incomingBuf;
                        fileOut.write(incomingBuf, readBytes);
                        fileOut.close();
+
                    }
 
                }
@@ -190,7 +216,6 @@ int Server::acceptConnection()
                     * Handle data from client connection.
                     */
                    int readBytes;
-                   //SBMPMessageType msgType;
                    char *message = new char[512];
                    if ((readBytes = recv(i, message, 512, 0)) <= 0)
                    {
@@ -198,25 +223,7 @@ int Server::acceptConnection()
                          * This means either there was a error in receiving data
                          * or that the client has closed the connection.
                          */
-                        if (readBytes == 0)
-                        {
-                            if (fdUserMap[i] != "")
-                            {
-                                string leftMsg = fdUserMap[i] + " has left the chat session.\n";
-                                cout << leftMsg;
-                                cout << "Connection closed\n";
-                                
-                            }
-                            // Close the connection
-                            FD_CLR(i, &master);
-                            userStatusMap.erase(fdUserMap[i]);
-                            fdUserMap.erase(i);
-                            close(i);
-                        }
-                        else
-                        {
-                            perror("receive");
-                        }
+                        
                    }
                    else
                    {
@@ -286,6 +293,7 @@ int Server::acceptConnection()
                        }
 
                        serverSockets.insert(httpSock);
+                       servSockCliSockMap[httpSock] = i;
                        FD_SET(httpSock, &master);
                        if (httpSock > fdMax)
                        {
@@ -311,27 +319,6 @@ int Server::acceptConnection()
        }
     }
     return 0;
-}
-
-std::string Server::getUserInfo()
-{
-    int count = fdUserMap.size();
-
-    std::stringstream countStr;
-    countStr << count;
-    string clientCountStr = countStr.str(); 
-
-    std::string userInfo;
-    userInfo.append(clientCountStr);
-    
-    std::map<int, string>::iterator it;
-    
-    for (it = fdUserMap.begin(); it != fdUserMap.end(); it++)
-    {
-        userInfo.append(" ");
-        userInfo.append(it->second);
-    }
-    return userInfo;
 }
 
 int main(int argc, char *argv[])

@@ -34,21 +34,15 @@ class Server
         char portNum[10];
         int maxConnections;
         std::set<int> serverSockets;
+        std::map<int, int> servSockCliSockMap;
         std::map<int, string> sockFileMap;
         std::map<int, bool> sockReadyForActualData;
-        std::map<int, string> fdUserMap;
-        std::map<string, UserStatusT> userStatusMap;
 
     public:
         Server(char *serverIP, char *portNum);
         int createSocketAndBind();
         int listenForConnections();
         int acceptConnection();
-        /*
-         * This function returns the client count and the 
-         * users connected in the form of a string
-         */
-        std::string getUserInfo();
 };
 
 #endif /* __SERVER__H__ */

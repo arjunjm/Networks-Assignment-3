@@ -206,7 +206,78 @@ int main(int argc, char *argv[])
 
         c->sendData(query, strlen(query)+1);
 
+        // Get file size from the proxy server
+        int numBytes;
+        int fileSize = 0;
+        int bytesReadSoFar = 0;
+        if ( (numBytes = recv(c->getSocketFd(), &fileSize, sizeof(int), 0)) < 0)
+        {
+            perror("Error receiving file size");
+            exit(1);
+        }
 
+        cout << " File size received as " << fileSize << endl;
+        // Get actual file data
+        string fileName = getFileName(string(query));
+        char str[100];
+        if (fileName == "/")
+            fileName = "-index.html";
+        else
+        {
+            std::size_t len = fileName.copy(str, fileName.length());
+            str[len] = '\0';
+
+            /*
+             * Replace / by -
+             */
+            for (int i = 0; i < len; i++)
+            {
+                if (str[i] == '/')
+                    str[i] = '-';
+            }
+            fileName = string(str);
+        }
+
+        char incomingBuf[512];
+        memset(incomingBuf, 0, 512);
+
+        std::size_t pos1 = string(query).find("Host");
+        std::size_t pos2 = string(query).find("com");
+        string hostName = string(query).substr(pos1 + 6, pos2 - pos1 - 3);
+        hostName = formatName(hostName);
+
+        string fName = hostName + fileName;
+
+        cout << " Filename = " << fName << endl;
+        std::fstream fileOut(fName.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
+
+        int fdMax;
+        fdMax = c->getSocketFd();
+        fd_set read_fds;
+        int fd = c->getSocketFd();
+
+        while(bytesReadSoFar != fileSize)
+        {
+            FD_ZERO(&read_fds);
+            FD_SET(fd, &read_fds);
+
+            if(select (fdMax +1, &read_fds, NULL, NULL, NULL) == -1)
+            {
+                perror("Select");
+                exit(4);
+            }
+
+            if (FD_ISSET(fd, &read_fds))
+            {
+                numBytes = recv(fd, incomingBuf, 512, 0);
+                bytesReadSoFar += numBytes;
+                fileOut.write(incomingBuf, numBytes);
+                if (bytesReadSoFar > fileSize)
+                    break;
+            }
+
+        }
+        fileOut.close();
     }
 
     return 0;

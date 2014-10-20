@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <list>
@@ -75,6 +76,19 @@ void sigchld_handler(int s)
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+int getFileSize(const char* fileName)
+{
+    struct stat st;
+    if (stat(fileName, &st) == 0)
+        return st.st_size;
+
+    fprintf(stderr, "Cannot determine size of %s: %s\n",
+            fileName, strerror(errno));
+
+    return -1;
+}
+
+
 void deleteHeaderFromFile(string fileName)
 {
     string tempFileName = fileName + "temp_file";
@@ -82,7 +96,7 @@ void deleteHeaderFromFile(string fileName)
     std::fstream inFile(fileName.c_str());
     std::string line;
     /*
-     * Ignore lines till the line "Alternate Protocol"
+     * Ignore lines till the line that contains only carriage return
      */
     bool ignoreLines = true;
     bool firstLine = false;
