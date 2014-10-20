@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
             exit(1);
         }
 
-        cout << " File size received as " << fileSize << endl;
+        cout << "Receving the file from the proxy server.." << endl;
         // Get actual file data
         string fileName = getFileName(string(query));
         char str[100];
@@ -248,7 +248,6 @@ int main(int argc, char *argv[])
 
         string fName = hostName + fileName;
 
-        cout << " Filename = " << fName << endl;
         std::fstream fileOut(fName.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
 
         int fdMax;
@@ -277,6 +276,7 @@ int main(int argc, char *argv[])
             }
 
         }
+        cout << "File: " << fName << " received" << endl;
         fileOut.close();
     }
 

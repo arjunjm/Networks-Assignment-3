@@ -36,7 +36,14 @@ class Server
         std::set<int> serverSockets;
         std::map<int, int> servSockCliSockMap;
         std::map<int, string> sockFileMap;
-        std::map<int, bool> sockReadyForActualData;
+
+        /*
+         * This map is used for LRU implmenetation.
+         * The map contains the HTTP request strings as
+         * the key and the corresponding timestamp in seconds
+         * (since year 2000) as the value.
+         */
+        std::map<string, double> requestTimeStampMap;
 
     public:
         Server(char *serverIP, char *portNum);

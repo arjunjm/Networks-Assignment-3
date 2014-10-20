@@ -84,16 +84,15 @@ int Server::listenForConnections()
     }
     return 0;
 }
-/*
-void printMap(std::map<int, string> myMap)
+
+void printMap(std::map<string, double> myMap)
 {
-    std::map<int, string>::iterator it;
+    std::map<string, double>::iterator it;
     for (it = myMap.begin(); it != myMap.end(); it++)
     {
         cout << it->first << " : " << it->second << endl;   
     }
 }
-*/
 
 
 int Server::acceptConnection()
@@ -178,7 +177,6 @@ int Server::acceptConnection()
                         */
                        int cliSocket = servSockCliSockMap[i];
                        int fileSize = getFileSize(sockFileMap[i].c_str());
-                       cout <<"File size = " << fileSize << endl;
                        send(cliSocket, &fileSize, sizeof (fileSize), 0);
 
                        /* 
@@ -231,7 +229,9 @@ int Server::acceptConnection()
                         * Client is sending actual data.
                         */
                        string msg(message);
+                       cout << "HTTP request on socket " << endl;
                        cout << message << endl; 
+
                        string fileName = getFileName(msg);
                        char str[100];
                        if (fileName == "/")
@@ -292,6 +292,26 @@ int Server::acceptConnection()
                            continue;
                        }
 
+                       /*
+                        * Insert into the requestTimeStampMap map.
+                        * Map the request string to the current time
+                        * in seconds.
+                        */
+                       double currTime = getCurrentTime();   
+                       if (requestTimeStampMap.size() < MAX_CACHE_SIZE)
+                       {
+                            requestTimeStampMap[msg] = currTime;
+                       }
+                       else
+                       {
+                           /*
+                            * Remove an entry from the map which 
+                            * is least recently used
+                            */
+                           removeLRUEntry(requestTimeStampMap);
+                       }
+                       printMap(requestTimeStampMap);
+
                        serverSockets.insert(httpSock);
                        servSockCliSockMap[httpSock] = i;
                        FD_SET(httpSock, &master);
@@ -312,7 +332,6 @@ int Server::acceptConnection()
                        char incomingBuf[512];
                        std::fstream fileOut(fName.c_str(), ios::out);
                        sockFileMap[httpSock] = fName;
-                       sockReadyForActualData[httpSock] = false;
                    }
                }
            }

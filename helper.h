@@ -5,6 +5,8 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <map>
+#include <time.h>
 #include <stdio.h>
 #include <list>
 #include <stdlib.h>
@@ -18,6 +20,7 @@ using namespace std;
 #define MAXDATASIZE 100
 #define STDIN 0
 #define HTTP_PORT 80
+#define MAX_CACHE_SIZE 3
 
 struct sockaddr;
 struct sockaddr_in;
@@ -76,6 +79,28 @@ void sigchld_handler(int s)
     while(waitpid(-1, NULL, WNOHANG) > 0);
 }
 
+double getCurrentTime()
+{
+       time_t timer;
+       struct tm reference;
+       double seconds;
+       
+       reference.tm_hour = 0;
+       reference.tm_min  = 0;
+       reference.tm_sec  = 0;
+       reference.tm_mon  = 0;
+       reference.tm_mday = 1;
+       reference.tm_year = 100;
+
+       // Get current time
+       time(&timer);
+
+       // Calculate the difference in seconds
+       seconds = difftime(timer, mktime(&reference));
+
+       return seconds;
+}
+
 int getFileSize(const char* fileName)
 {
     struct stat st;
@@ -88,6 +113,18 @@ int getFileSize(const char* fileName)
     return -1;
 }
 
+void removeLRUEntry(std::map<string, double> reqTimeMap)
+{
+    std::map<string, double>::iterator it;
+    std::map<string, double>::iterator leastRecentIter;
+    leastRecentIter = reqTimeMap.begin();
+    for (it = reqTimeMap.begin(); it != reqTimeMap.end(); it++)
+    {
+        if (it->second < leastRecentIter->second)
+            leastRecentIter = it;
+    }
+    reqTimeMap.erase(leastRecentIter);
+}
 
 void deleteHeaderFromFile(string fileName)
 {
