@@ -2,7 +2,7 @@
  * Implementation of the Server Class
  */
 
-#include "server.h"
+#include "proxy.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
