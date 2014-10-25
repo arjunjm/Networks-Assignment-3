@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
         string fileName = getFileName(string(query));
         char str[100];
         if (fileName == "/")
-            fileName = "-index.html";
+            fileName = "index.html";
         else
         {
             std::size_t len = fileName.copy(str, fileName.length());
@@ -230,12 +230,16 @@ int main(int argc, char *argv[])
             /*
              * Replace / by -
              */
+            /*
             for (int i = 0; i < len; i++)
             {
                 if (str[i] == '/')
                     str[i] = '-';
             }
+            */
             fileName = string(str);
+            unsigned found = fileName.find_last_of("/\\");
+            fileName =  fileName.substr(found+1);
         }
 
         char incomingBuf[512];
@@ -246,7 +250,8 @@ int main(int argc, char *argv[])
         string hostName = string(query).substr(pos1 + 6, pos2 - pos1 - 3);
         hostName = formatName(hostName);
 
-        string fName = hostName + fileName;
+        //string fName = hostName + fileName;
+        string fName = fileName;
 
         std::fstream fileOut(fName.c_str(), std::fstream::out | std::fstream::app | std::fstream::binary);
 
