@@ -20,7 +20,7 @@ using namespace std;
 #define MAXDATASIZE 100
 #define STDIN 0
 #define HTTP_PORT 80
-#define MAX_CACHE_SIZE 3
+#define MAX_CACHE_SIZE 10
 
 struct sockaddr;
 struct sockaddr_in;

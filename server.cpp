@@ -229,7 +229,6 @@ int Server::acceptConnection()
                         * Client is sending actual data.
                         */
                        string msg(message);
-                       cout << "HTTP request on socket " << endl;
                        cout << message << endl; 
 
                        string fileName = getFileName(msg);
@@ -371,7 +370,6 @@ int Server::acceptConnection()
                            continue;
                        }
 
-                       char incomingBuf[512];
                        std::fstream fileOut(fName.c_str(), ios::out);
                        sockFileMap[httpSock] = fName;
                    }

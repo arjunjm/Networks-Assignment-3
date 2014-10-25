@@ -200,8 +200,6 @@ int main(int argc, char *argv[])
          * Send HTTP request message to the proxy server
          */
         cout << "Connection successful..\n";
-        int clientFd = c->getSocketFd();
-        bool hasPrinted;
         strcpy(query, createHTMLRequest(c->getURL()));
 
         c->sendData(query, strlen(query)+1);
