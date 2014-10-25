@@ -303,9 +303,45 @@ int Server::acceptConnection()
                         * in seconds.
                         */
                        double currTime = getCurrentTime();   
+                       if (requestTimeStampMap.find(msg) != requestTimeStampMap.end())
+                       {
+                           /*
+                            * Entry found in cache. No need to fetch from the web server
+                            */
+                           cout << "Cache entry found. Sending to client from the stored cache" << endl;
+                           requestTimeStampMap[msg] = currTime;
+                           /*
+                            * Send file size to the client
+                            */
+                           int cliSocket = i;
+                           int fileSize = getFileSize(fName.c_str());
+                           send(cliSocket, &fileSize, sizeof (fileSize), 0);
+
+                           /* 
+                            * Send file to the client
+                            */
+                           char buffer[512];
+                           memset(buffer, 0, 512);
+                           std::fstream fileIn(fName.c_str());
+                           int bytesSend = 0;
+                           if (fileIn.is_open())
+                           {
+                               while (fileIn.good())
+                               {
+                                   fileIn.read(buffer, 512);
+                                   bytesSend += fileIn.gcount();
+                                   send(cliSocket, buffer, fileIn.gcount(), 0);
+                               }
+                           }
+                           continue;
+
+                       }
                        if (requestTimeStampMap.size() < MAX_CACHE_SIZE)
                        {
-                            requestTimeStampMap[msg] = currTime;
+                           /*
+                            * Entry not in cache. So add to the cache and fetch from web server
+                            */
+                           requestTimeStampMap[msg] = currTime;
                        }
                        else
                        {
@@ -313,9 +349,10 @@ int Server::acceptConnection()
                             * Remove an entry from the map which 
                             * is least recently used
                             */
+                           cout << "Maximum cache size reached. Removing the oldest entry from the map" << endl;
                            removeLRUEntry(requestTimeStampMap);
+                           requestTimeStampMap[msg] = currTime;
                        }
-                       printMap(requestTimeStampMap);
 
                        serverSockets.insert(httpSock);
                        servSockCliSockMap[httpSock] = i;
