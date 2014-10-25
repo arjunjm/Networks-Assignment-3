@@ -31,7 +31,6 @@ class Client
         int connectToHost();
         char* getURL();
         int sendData(void * buf, size_t len, int flags = 0);
-        int recvData();
         bool getConnectionStatus();
         int  getSocketFd();
         char* getUserName();
