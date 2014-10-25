@@ -235,7 +235,7 @@ int Server::acceptConnection()
                        string fileName = getFileName(msg);
                        char str[100];
                        if (fileName == "/")
-                           fileName = "-index.html";
+                           fileName = "index.html";
                        else
                        {
                            std::size_t len = fileName.copy(str, fileName.length());
@@ -244,12 +244,16 @@ int Server::acceptConnection()
                            /*
                             * Replace / by -
                             */
+                           /*
                            for (int i = 0; i < len; i++)
                            {
                                if (str[i] == '/')
                                    str[i] = '-';
                            }
+                           */
                            fileName = string(str);
+                           unsigned found = fileName.find_last_of("/\\");
+                           fileName =  fileName.substr(found+1);
                        }
 
                        std::size_t pos1 = msg.find("Host");
@@ -257,7 +261,8 @@ int Server::acceptConnection()
                        string hostName = msg.substr(pos1 + 6, pos2 - pos1 - 3);
                        hostName = formatName(hostName);
 
-                       string fName = hostName + fileName;
+                       //string fName = hostName + fileName;
+                       string fName = fileName;
                        char *hostIP = getHostIP(hostName.c_str());
                        if (hostIP == NULL)
                            continue;
